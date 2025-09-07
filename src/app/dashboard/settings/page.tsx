@@ -410,30 +410,74 @@ export default function SettingsPage() {
                   <div className="flex flex-wrap gap-4">
                     <button 
                       onClick={() => {
-                        alert('Veritabanı yedekleme başlatıldı!')
-                        console.log('Database backup initiated')
+                        // Tüm localStorage verilerini export et
+                        const data = {
+                          products: JSON.parse(localStorage.getItem('products') || '[]'),
+                          productionRecords: JSON.parse(localStorage.getItem('production-records') || '[]'),
+                          adminUsers: JSON.parse(localStorage.getItem('admin-users') || '[]'),
+                          activities: JSON.parse(localStorage.getItem('activities') || '[]'),
+                          exportDate: new Date().toISOString()
+                        }
+                        
+                        const dataStr = JSON.stringify(data, null, 2)
+                        const dataBlob = new Blob([dataStr], {type: 'application/json'})
+                        const url = URL.createObjectURL(dataBlob)
+                        const link = document.createElement('a')
+                        link.href = url
+                        link.download = `balco-data-${new Date().toISOString().split('T')[0]}.json`
+                        link.click()
+                        URL.revokeObjectURL(url)
+                        
+                        alert('Veriler başarıyla export edildi!')
                       }}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                      Veritabanı Yedekle
+                      📥 Verileri Export Et
                     </button>
+                    
+                    <label className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer">
+                      📤 Verileri Import Et
+                      <input 
+                        type="file" 
+                        accept=".json"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            const reader = new FileReader()
+                            reader.onload = (event) => {
+                              try {
+                                const data = JSON.parse(event.target?.result as string)
+                                
+                                // Verileri localStorage'a yükle
+                                if (data.products) localStorage.setItem('products', JSON.stringify(data.products))
+                                if (data.productionRecords) localStorage.setItem('production-records', JSON.stringify(data.productionRecords))
+                                if (data.adminUsers) localStorage.setItem('admin-users', JSON.stringify(data.adminUsers))
+                                if (data.activities) localStorage.setItem('activities', JSON.stringify(data.activities))
+                                
+                                alert('Veriler başarıyla import edildi! Sayfa yenileniyor...')
+                                window.location.reload()
+                              } catch (error) {
+                                alert('Dosya formatı hatalı!')
+                              }
+                            }
+                            reader.readAsText(file)
+                          }
+                        }}
+                      />
+                    </label>
+                    
                     <button 
                       onClick={() => {
-                        alert('Önbellek temizlendi!')
-                        console.log('Cache cleared successfully')
+                        if (confirm('Tüm localStorage verileri silinecek! Emin misiniz?')) {
+                          localStorage.clear()
+                          alert('Tüm veriler temizlendi! Sayfa yenileniyor...')
+                          window.location.reload()
+                        }
                       }}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                     >
-                      Cache Temizle
-                    </button>
-                    <button 
-                      onClick={() => {
-                        alert('Sistem güncellemesi başlatıldı!')
-                        console.log('System update initiated')
-                      }}
-                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-                    >
-                      Sistem Güncellemesi
+                      🗑️ Tüm Verileri Sil
                     </button>
                   </div>
                 </motion.div>
