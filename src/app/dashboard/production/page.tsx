@@ -18,6 +18,17 @@ interface ProductionRecord {
   notes?: string
 }
 
+interface ProductType {
+  _id: string
+  name: string
+}
+
+interface Color {
+  _id: string
+  name: string
+  hexCode: string
+}
+
 const mockRecords: ProductionRecord[] = []
 
 export default function ProductionPage() {
@@ -26,6 +37,9 @@ export default function ProductionPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedQuality, setSelectedQuality] = useState<string>('all')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [productTypes, setProductTypes] = useState<ProductType[]>([])
+  const [colors, setColors] = useState<Color[]>([])
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
   
   // Modal form states
@@ -44,6 +58,34 @@ export default function ProductionPage() {
     if (saved) {
       setRecords(JSON.parse(saved))
     }
+    
+    // Fetch product types and colors from API
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        
+        const [productTypesRes, colorsRes] = await Promise.all([
+          fetch('/api/product-types'),
+          fetch('/api/colors')
+        ])
+        
+        if (productTypesRes.ok) {
+          const productTypesData = await productTypesRes.json()
+          setProductTypes(productTypesData)
+        }
+        
+        if (colorsRes.ok) {
+          const colorsData = await colorsRes.json()
+          setColors(colorsData)
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchData()
   }, [])
 
   // Save to localStorage whenever records change
@@ -169,21 +211,27 @@ export default function ProductionPage() {
                   value={newRecord.productType}
                   onChange={(e) => setNewRecord({...newRecord, productType: e.target.value})}
                   className="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 focus:outline-none"
+                  disabled={loading}
                 >
                   <option value="">Ürün Seçin</option>
-                  <option value="Plastik Kutu">Plastik Kutu</option>
-                  <option value="Kapak">Kapak</option>
-                  <option value="Conta">Conta</option>
+                  {productTypes.map((product) => (
+                    <option key={product._id} value={product.name}>
+                      {product.name}
+                    </option>
+                  ))}
                 </select>
                 <select 
                   value={newRecord.color}
                   onChange={(e) => setNewRecord({...newRecord, color: e.target.value})}
                   className="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 focus:outline-none"
+                  disabled={loading}
                 >
                   <option value="">Renk Seçin</option>
-                  <option value="Mavi">Mavi</option>
-                  <option value="Kırmızı">Kırmızı</option>
-                  <option value="Siyah">Siyah</option>
+                  {colors.map((color) => (
+                    <option key={color._id} value={color.name}>
+                      {color.name}
+                    </option>
+                  ))}
                 </select>
                 <input
                   type="number"
