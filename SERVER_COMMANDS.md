@@ -147,14 +147,27 @@ systemctl restart nginx
 ```bash
 cd /var/www/balco
 
-# PM2 ile başlat
-pm2 start npm --name "balco" -- start
+# Önce GitHub'dan güncel kodu çek
+git pull origin main
+
+# Dependencies yeniden kur (gerekiyorsa)
+npm install
+
+# Build temizle ve yeniden yap
+rm -rf .next
+npm run build
+
+# PM2 ile ecosystem config kullanarak başlat
+pm2 start ecosystem.config.js
 
 # PM2 config'i kaydet
 pm2 save
 
 # PM2 durumu kontrol et
 pm2 status
+
+# Logs kontrol et
+pm2 logs balco-app
 ```
 
 ### 11. SSL Sertifikası (Let's Encrypt)
@@ -195,6 +208,70 @@ A Record: www.balcoenjeksiyon.xyz -> 45.141.151.170
 - IP ile: http://45.141.151.170
 - Domain ile: http://balcoenjeksiyon.xyz (DNS ayarlandıktan sonra)
 - SSL sonrası: https://balcoenjeksiyon.xyz
+
+## Sorun Giderme Komutları
+
+### PM2 Hataları
+```bash
+# Uygulama durumu kontrol et
+pm2 status
+
+# Logları kontrol et
+pm2 logs balco-app
+
+# Uygulamayı yeniden başlat
+pm2 restart balco-app
+
+# PM2 processes'i durdur
+pm2 stop all
+pm2 delete all
+
+# Yeniden başlat
+cd /var/www/balco
+pm2 start ecosystem.config.js
+```
+
+### Build Hataları
+```bash
+cd /var/www/balco
+
+# Build cache temizle
+rm -rf .next node_modules package-lock.json
+
+# Yeniden kur ve build et
+npm install
+npm run build
+
+# PM2 restart
+pm2 restart balco-app
+```
+
+### MongoDB Sorunları
+```bash
+# MongoDB durumu
+systemctl status mongod
+
+# MongoDB yeniden başlat
+systemctl restart mongod
+
+# MongoDB bağlantı testi
+mongosh --eval "show dbs"
+```
+
+### Nginx Sorunları
+```bash
+# Nginx durumu kontrol et
+systemctl status nginx
+
+# Nginx config test et
+nginx -t
+
+# Nginx yeniden başlat
+systemctl restart nginx
+
+# Nginx logları
+tail -f /var/log/nginx/error.log
+```
 
 ---
 Kurulum tamamlandıktan sonra BALCO sistemi tam olarak çalışacak!
