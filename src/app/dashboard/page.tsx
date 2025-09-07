@@ -19,6 +19,26 @@ interface ExtendedSession {
   expires: string
 }
 
+// Local data types
+interface ProductionRecord {
+  id: string
+  productType: string
+  color: string
+  quantity: number
+  date: string
+  shift: string
+  operator: string
+  notes?: string
+  quality: string
+}
+
+interface Product {
+  id: string
+  name: string
+  type: string
+  color: string
+}
+
 import { 
   BarChart3, 
   Factory, 
@@ -56,22 +76,22 @@ export default function DashboardPage() {
     setIsClient(true)
     
     // Production records'dan gerçek istatistikleri hesapla
-    const productionRecords = JSON.parse(localStorage.getItem('production-records') || '[]')
-    const products = JSON.parse(localStorage.getItem('products') || '[]')
+    const productionRecords: ProductionRecord[] = JSON.parse(localStorage.getItem('production-records') || '[]')
+    const products: Product[] = JSON.parse(localStorage.getItem('products') || '[]')
     
     const today = new Date().toISOString().split('T')[0]
-    const todayRecords = productionRecords.filter((record: any) => 
+    const todayRecords = productionRecords.filter((record: ProductionRecord) => 
       record.date === today
     )
     
     const thisWeek = new Date()
     thisWeek.setDate(thisWeek.getDate() - 7)
-    const weeklyRecords = productionRecords.filter((record: any) => 
+    const weeklyRecords = productionRecords.filter((record: ProductionRecord) => 
       new Date(record.date) >= thisWeek
     )
     
-    const todayTotal = todayRecords.reduce((sum: number, record: any) => sum + (record.quantity || 0), 0)
-    const weeklyTotal = weeklyRecords.reduce((sum: number, record: any) => sum + (record.quantity || 0), 0)
+    const todayTotal = todayRecords.reduce((sum: number, record: ProductionRecord) => sum + (record.quantity || 0), 0)
+    const weeklyTotal = weeklyRecords.reduce((sum: number, record: ProductionRecord) => sum + (record.quantity || 0), 0)
     
     setStats({
       todayProduction: todayTotal,
