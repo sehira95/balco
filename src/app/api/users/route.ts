@@ -17,13 +17,11 @@ export async function POST(request: Request) {
     const hashedPassword = await bcrypt.hash(password, 12)
 
     const newUser = {
-      _id: Math.random().toString(36).substr(2, 9),
       name,
       email,
       password: hashedPassword,
       role: role || 'user',
-      department: department || 'Genel',
-      createdAt: new Date().toISOString()
+      department: department || 'Genel'
     }
 
     try {
@@ -44,12 +42,19 @@ export async function POST(request: Request) {
       })
     } catch (error) {
       console.error('Database error:', error)
-      // If database fails, store in temp users
-      addTempUser(newUser)
+      
+      // If database fails, create temp user with required fields
+      const tempUser = {
+        _id: Math.random().toString(36).substr(2, 9),
+        ...newUser,
+        createdAt: new Date().toISOString()
+      }
+      
+      addTempUser(tempUser)
       
       return Response.json({ 
         message: 'Kullanıcı başarıyla oluşturuldu (geçici olarak)',
-        user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role }
+        user: { id: tempUser._id, name: tempUser.name, email: tempUser.email, role: tempUser.role }
       })
     }
   } catch (error) {
