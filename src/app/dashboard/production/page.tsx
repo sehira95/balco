@@ -54,9 +54,18 @@ export default function ProductionPage() {
   // Client-side hydration fix
   useEffect(() => {
     setIsClient(true)
-    const saved = localStorage.getItem('production-records')
-    if (saved) {
-      setRecords(JSON.parse(saved))
+    
+    // Only load from localStorage after client is ready
+    try {
+      const saved = localStorage.getItem('production-records')
+      if (saved) {
+        const parsedRecords = JSON.parse(saved)
+        if (Array.isArray(parsedRecords)) {
+          setRecords(parsedRecords)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved records:', error)
     }
     
     // Fetch product types and colors from API
@@ -71,15 +80,22 @@ export default function ProductionPage() {
         
         if (productTypesRes.ok) {
           const productTypesData = await productTypesRes.json()
-          setProductTypes(productTypesData)
+          setProductTypes(productTypesData.productTypes || [])
+        } else {
+          console.error('Failed to fetch product types:', productTypesRes.status)
         }
         
         if (colorsRes.ok) {
           const colorsData = await colorsRes.json()
-          setColors(colorsData)
+          setColors(colorsData.colors || [])
+        } else {
+          console.error('Failed to fetch colors:', colorsRes.status)
         }
       } catch (error) {
         console.error('Error fetching data:', error)
+        // Set fallback data if API fails
+        setProductTypes([])
+        setColors([])
       } finally {
         setLoading(false)
       }
@@ -91,7 +107,11 @@ export default function ProductionPage() {
   // Save to localStorage whenever records change
   useEffect(() => {
     if (isClient) {
-      localStorage.setItem('production-records', JSON.stringify(records))
+      try {
+        localStorage.setItem('production-records', JSON.stringify(records))
+      } catch (error) {
+        console.error('Error saving records to localStorage:', error)
+      }
     }
   }, [records, isClient])
 
@@ -148,7 +168,13 @@ export default function ProductionPage() {
   }
 
   const totalProduction = records.reduce((sum, record) => sum + record.quantity, 0)
-  const avgQuality = records.filter(r => r.quality === 'A').length / records.length * 100
+  const avgQuality = records.length > 0 ? records.filter(r => r.quality === 'A').length / records.length * 100 : 0
+
+  if (!isClient) {
+    return <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="text-white">Yükleniyor...</div>
+    </div>
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
@@ -214,11 +240,15 @@ export default function ProductionPage() {
                   disabled={loading}
                 >
                   <option value="">Ürün Seçin</option>
-                  {productTypes.map((product) => (
-                    <option key={product._id} value={product.name}>
-                      {product.name}
-                    </option>
-                  ))}
+                  {loading ? (
+                    <option disabled>Yükleniyor...</option>
+                  ) : (
+                    productTypes.map((product) => (
+                      <option key={product._id} value={product.name}>
+                        {product.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <select 
                   value={newRecord.color}
@@ -227,11 +257,15 @@ export default function ProductionPage() {
                   disabled={loading}
                 >
                   <option value="">Renk Seçin</option>
-                  {colors.map((color) => (
-                    <option key={color._id} value={color.name}>
-                      {color.name}
-                    </option>
-                  ))}
+                  {loading ? (
+                    <option disabled>Yükleniyor...</option>
+                  ) : (
+                    colors.map((color) => (
+                      <option key={color._id} value={color.name}>
+                        {color.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <input
                   type="number"
@@ -282,7 +316,6 @@ export default function ProductionPage() {
                       setRecords([newRecordData, ...records])
                       setNewRecord({ productType: '', color: '', quantity: '', operator: '', machineId: '' })
                       setShowAddModal(false)
-                      console.log('New production record added:', newRecordData)
                     } else {
                       alert('Lütfen tüm alanları doldurun!')
                     }
@@ -453,7 +486,6 @@ export default function ProductionPage() {
                           whileTap={{ scale: 0.9 }}
                           onClick={() => {
                             setRecords(records.filter(r => r.id !== record.id))
-                            console.log('Delete record:', record.id)
                           }}
                           className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/20 rounded-lg transition-colors"
                         >
