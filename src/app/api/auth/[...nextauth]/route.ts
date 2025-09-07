@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import connectDB from '@/lib/mongodb'
 import { User } from '@/models/User'
 
-// Mock users for authentication
+// Mock users for authentication fallback
 const mockUsers = [
   {
     _id: '1',
@@ -22,30 +22,6 @@ const mockUsers = [
   }
 ]
 
-// In-memory storage for new users
-const tempUsers: Array<{
-  _id: string
-  name: string
-  email: string
-  password: string
-  role: string
-  department: string
-  createdAt: string
-}> = []
-
-// Function to add temp user
-export function addTempUser(user: {
-  _id: string
-  name: string
-  email: string
-  password: string
-  role: string
-  department: string
-  createdAt: string
-}) {
-  tempUsers.push(user)
-}
-
 const authOptions = {
   providers: [
     CredentialsProvider({
@@ -60,69 +36,29 @@ const authOptions = {
         }
 
         try {
-          // First check temp users (newly created users)
-          const tempUser = tempUsers.find(user => user.email === credentials.email)
-          if (tempUser) {
-            const isPasswordValid = await bcrypt.compare(credentials.password, tempUser.password)
+          await connectDB()
+          
+          // Try to find user in database
+          const user = await User.findOne({ email: credentials.email })
+
+          if (user) {
+            const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
             if (isPasswordValid) {
               return {
-                id: tempUser._id,
-                email: tempUser.email,
-                name: tempUser.name,
-                role: tempUser.role,
+                id: user._id.toString(),
+                email: user.email,
+                name: user.name,
+                role: user.role,
               }
             }
           }
 
-          await connectDB()
-          
-          // Mock mode için test kullanıcıları kontrol et
-          if (process.env.MONGODB_URI?.startsWith('mock://')) {
-            const mockUser = mockUsers.find(user => user.email === credentials.email)
-            
-            if (!mockUser) {
-              return null
-            }
-
-            const isPasswordValid = await bcrypt.compare(credentials.password, mockUser.password)
-            
-            if (!isPasswordValid) {
-              return null
-            }
-
-            return {
-              id: mockUser._id,
-              email: mockUser.email,
-              name: mockUser.name,
-              role: mockUser.role,
-            }
-          }
-
-          // Normal database mode
-          const user = await User.findOne({ email: credentials.email })
-
-          if (!user) {
-            return null
-          }
-
-          const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
-
-          if (!isPasswordValid) {
-            return null
-          }
-
-          return {
-            id: user._id.toString(),
-            email: user.email,
-            name: user.name,
-            role: user.role,
-          }
+          return null
         } catch (error) {
           console.error('Auth error:', error)
           
           // Fallback to mock users if database fails
           const mockUser = mockUsers.find(user => user.email === credentials.email)
-          const tempUser = tempUsers.find(user => user.email === credentials.email)
           
           if (mockUser) {
             const isPasswordValid = await bcrypt.compare(credentials.password, mockUser.password)
@@ -137,19 +73,6 @@ const authOptions = {
             }
           }
 
-          if (tempUser) {
-            const isPasswordValid = await bcrypt.compare(credentials.password, tempUser.password)
-            
-            if (isPasswordValid) {
-              return {
-                id: tempUser._id,
-                email: tempUser.email,
-                name: tempUser.name,
-                role: tempUser.role,
-              }
-            }
-          }
-          
           return null
         }
       }
